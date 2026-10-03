@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+openai
+httpx
+pycountry>=24.6.1,<25
