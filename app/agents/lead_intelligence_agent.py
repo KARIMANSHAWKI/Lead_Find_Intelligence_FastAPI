@@ -75,7 +75,8 @@ class LeadIntelligenceAgent:
 
         logger.info("agent_run_started", extra=context)
         companies = await self._search_companies(client_context, context)
-
+        print('###########################')
+        print(companies)
         for index, company in enumerate(companies[: self._max_candidates]):
             company_context = {
                 **context,

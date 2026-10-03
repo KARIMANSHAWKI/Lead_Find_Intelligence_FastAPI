@@ -8,7 +8,7 @@ from app.api.dependencies import get_run_lead_intelligence
 from app.api.v1.agent_routes import get_callback_client
 from app.application.dto.response import RunAgentResponse
 from app.core.config import Settings
-from app.core.exceptions import ProviderResponseError, ProviderTimeoutError
+from app.core.exceptions import CompanySearchInputError, ProviderError, ProviderResponseError, ProviderTimeoutError
 from app.infrastructure.result_callback import ResultCallbackClient
 from app.main import create_app
 
@@ -53,6 +53,8 @@ def test_callback_request_acknowledges_and_delivers_result(payload):
 
 
 @pytest.mark.parametrize("error,code", [
+    (CompanySearchInputError("private-provider-details"), "invalid_icp"),
+    (ProviderError("private-provider-details"), "service_unavailable"),
     (ProviderTimeoutError("private-provider-details"), "timeout"),
     (ProviderResponseError("private-provider-details"), "invalid_response"),
     (RuntimeError("private-provider-details"), "research_failed"),

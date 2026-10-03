@@ -39,6 +39,9 @@ _HEADCOUNT_BANDS = (
 )
 _INDUSTRY_ALIASES = {
     "software": "Software Development",
+    "marketing service": "Marketing Services",
+    "marketing services": "Marketing Services",
+    "advertising services": "Advertising Services",
     "logistics": "Transportation, Logistics, Supply Chain and Storage",
 }
 
@@ -48,7 +51,7 @@ class HunterCompanySearchProvider(CompanySearchPort):
 
     Size bands overlap the requested interval, so size matching is approximate.
     Locations must be a country name/code or 'City, Country'. Industry labels
-    are passed through except the explicit Software/Logistics aliases above.
+    are passed through except the explicit industry aliases above.
     No enrichment is performed: Discover does not return firmographic fields.
     """
 
@@ -118,6 +121,10 @@ class HunterCompanySearchProvider(CompanySearchPort):
 
     @staticmethod
     def _check_status(response: httpx.Response) -> None:
+        if response.status_code == 400:
+            raise CompanySearchInputError(
+                "Company discovery rejected the ICP filters; review industries, location, and company size."
+            )
         if response.status_code == 401:
             raise ProviderAuthenticationError("Hunter authentication failed; check HUNTER_API_KEY.")
         if response.status_code == 403:

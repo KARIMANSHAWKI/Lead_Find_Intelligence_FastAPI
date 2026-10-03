@@ -156,7 +156,7 @@ def test_provider_closes_its_owned_http_client(monkeypatch):
     (401, {}, ProviderAuthenticationError),
     (403, {"errors": [{"id": "rate_limit"}]}, ProviderRateLimitError),
     (403, {"errors": [{"id": "no_discover_access"}]}, ProviderError),
-    (429, {}, ProviderRateLimitError), (400, {}, ProviderError), (500, {}, ProviderError),
+    (429, {}, ProviderRateLimitError), (400, {}, CompanySearchInputError), (500, {}, ProviderError),
 ])
 def test_http_errors_are_translated(status, payload, expected):
     with pytest.raises(expected) as error:
@@ -177,3 +177,23 @@ def test_network_errors_and_timeouts_are_translated(exception, expected):
         run_search(handler)
     assert "secret" not in str(error.value)
     assert error.value.__cause__ is None
+
+
+def test_marketing_industry_aliases_use_supported_labels():
+    def handler(request):
+        assert json.loads(request.content) == {
+            "industry": {"include": ["Advertising Services", "Marketing Services"]},
+            "headquarters_location": {"include": [{"country": "EG"}]},
+            "headcount": ["1-10", "11-50", "51-200"],
+        }
+        return response(request)
+    run_search(handler, industries=["Advertising Services", "Marketing SErvice", " marketing services "],
+        min_size=1, max_size=200)
+
+
+def test_rejected_filters_do_not_expose_vendor_error_details():
+    with pytest.raises(CompanySearchInputError, match="rejected the ICP filters") as error:
+        run_search(lambda request: httpx.Response(400, json={"errors": [
+            {"id": "invalid_industry", "details": "private-provider-secret"},
+        ]}))
+    assert "private-provider-secret" not in str(error.value)

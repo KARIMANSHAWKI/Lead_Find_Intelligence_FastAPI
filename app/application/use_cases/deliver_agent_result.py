@@ -1,6 +1,8 @@
 from app.application.dto.request import RunAgentRequest
 from app.application.use_cases.run_lead_intelligence import RunLeadIntelligence
-from app.core.exceptions import ProviderError, ProviderResponseError, ProviderTimeoutError
+from app.core.exceptions import (
+    CompanySearchInputError, ProviderError, ProviderResponseError, ProviderTimeoutError,
+)
 from app.domain.ports.result_callback import ResultCallbackPort
 
 
@@ -14,7 +16,9 @@ async def deliver_agent_result(
         result = await use_case.execute(request)
         payload = result.model_dump(mode="json") | {"status": "completed"}
     except Exception as exception:
-        if isinstance(exception, (ProviderTimeoutError, TimeoutError)):
+        if isinstance(exception, CompanySearchInputError):
+            code = "invalid_icp"
+        elif isinstance(exception, (ProviderTimeoutError, TimeoutError)):
             code = "timeout"
         elif isinstance(exception, ProviderResponseError):
             code = "invalid_response"
