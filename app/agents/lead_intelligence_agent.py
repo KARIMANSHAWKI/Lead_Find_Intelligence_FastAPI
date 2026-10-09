@@ -75,8 +75,6 @@ class LeadIntelligenceAgent:
 
         logger.info("agent_run_started", extra=context)
         companies = await self._search_companies(client_context, context)
-        print('###########################')
-        print(companies)
         for index, company in enumerate(companies[: self._max_candidates]):
             company_context = {
                 **context,
@@ -419,7 +417,7 @@ class LeadIntelligenceAgent:
             website=company.website,
             icp_fit=analysis.icp_fit,
             product_relevance=analysis.product_relevance,
-            why_now=self._build_why_now(client, signals),
+            why_now=self._build_why_now(client, signals, analysis.why_now),
             buying_signals=signals,
         )
         logger.info(
@@ -461,9 +459,13 @@ class LeadIntelligenceAgent:
     def _build_why_now(
         client: ClientContext,
         signals: list[BuyingSignal],
+        proposed: str,
     ) -> str:
-        evidence = " ".join(signal.evidence for signal in signals[:3])
-        return f"{evidence} These verified signals indicate a timely need for {client.product}."
+        quotes = [signal.evidence for signal in signals[:3]]
+        sentence = " ".join(proposed.split())
+        if any(quote in sentence for quote in quotes):
+            return sentence
+        return f"{quotes[0]} This is a timely reason to discuss {client.product}."
 
     @staticmethod
     def _validate_run_result(stats: _RunStats) -> None:

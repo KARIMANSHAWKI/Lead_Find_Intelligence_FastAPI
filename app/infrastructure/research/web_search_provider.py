@@ -232,12 +232,13 @@ class WebSearchResearchProvider(WebResearchPort):
         robots = RobotFileParser()
         robots.parse(robots_text.splitlines())
         
-        # Priority URLs to visit first (careers, news, about)
         urls = [root]
         visited = set()
         seen_text = set()
         page_failures = 0
         successful_pages = 0
+        homepage_evidence: list[ResearchEvidence] = []
+        priority_evidence: list[ResearchEvidence] = []
         
         while urls and len(visited) < self._max_pages:
             url = urls.pop(0)
@@ -265,30 +266,22 @@ class WebSearchResearchProvider(WebResearchPort):
             page_evidence_count = 0
             page.feed(html)
             
-            # Determine source type based on URL path
             path = urlsplit(url).path.casefold()
             source_type = self._determine_source_type(path)
-            
-            # Extract text content
+            collected = homepage_evidence if path in {"", "/"} else priority_evidence
             full_text = "".join(page.parts)
-            
+
             for line in full_text.splitlines():
                 text = " ".join(line.split())
-                
-                # Skip short or duplicate text
                 if len(text) < 40 or text in seen_text:
                     continue
-                
                 seen_text.add(text)
-                evidence = ResearchEvidence(
+                collected.append(ResearchEvidence(
                     text=text[:1500],
                     source_url=url,
                     source_type=source_type,
-                )
-                
-                result.evidence.append(evidence)
+                ))
                 page_evidence_count += 1
-                
                 if page_evidence_count >= self._max_evidence:
                     break
             
@@ -299,9 +292,11 @@ class WebSearchResearchProvider(WebResearchPort):
         if page_failures and not successful_pages:
             raise ProviderError("Company research pages were unavailable.")
         
-        # Sort evidence by relevance (careers and announcements first, then by signal patterns)
-        result.evidence = self._prioritize_evidence(result.evidence)
-        result.evidence = result.evidence[:self._max_evidence]
+        ordered = self._prioritize_evidence(priority_evidence)
+        remaining = self._max_evidence - len(ordered)
+        if remaining > 0:
+            ordered.extend(self._prioritize_evidence(homepage_evidence)[:remaining])
+        result.evidence = ordered[: self._max_evidence]
         
         logger.info("web_research_completed", extra={
             "company": company.name,

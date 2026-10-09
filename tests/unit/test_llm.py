@@ -56,12 +56,7 @@ def analysis_data():
         "product_relevance": "high",
         "why_now": "The company is actively hiring.",
         "buying_signals": [
-            {
-                "type": "hiring_growth",
-                "evidence": "The company lists 18 open positions.",
-                "source_url": "https://example.com/jobs",
-                "strength": "high",
-            }
+            {"type": "hiring_growth", "evidence_index": 0, "strength": "high"}
         ],
         "evidence_quality": "high",
     }
@@ -112,8 +107,22 @@ def test_valid_structured_response(inputs, analysis_data):
         completion(json.dumps(analysis_data), finish_reason="stop")
     )
     result = asyncio.run(llm.analyze_company(*inputs))
+    evidence = inputs[2][0]
 
-    assert result == ProspectAnalysis.model_validate(analysis_data)
+    assert result == ProspectAnalysis(
+        icp_fit="high",
+        product_relevance="high",
+        why_now="The company is actively hiring.",
+        evidence_quality="high",
+        buying_signals=[
+            {
+                "type": "hiring_growth",
+                "evidence": evidence.text,
+                "source_url": evidence.source_url,
+                "strength": "high",
+            }
+        ],
+    )
     parameters = create.call_args.kwargs
     assert parameters["model"] == "gpt-4o-mini"
     assert parameters["tool_choice"]["function"]["name"] == "submit_prospect_analysis"
